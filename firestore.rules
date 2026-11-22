@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ✏️ Cambia estos correos por los de ustedes dos (en minúsculas).
+    function permitido() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in ['uzzielsoy@gmail.com'];
+    }
+
+    // Nunca se guarda un movimiento vacío o con datos rotos.
+    function movimientoValido() {
+      let d = request.resource.data;
+      return d.fecha is string && d.fecha.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.categoria is string && d.categoria.size() > 0
+        && d.cantidad is number && d.cantidad > 0;
+    }
+
+    match /transacciones/{id} {
+      allow read, delete: if permitido();
+      allow create, update: if permitido() && movimientoValido();
+    }
+
+    match /categorias/{id} {
+      allow read, delete: if permitido();
+      allow create, update: if permitido()
+        && request.resource.data.nombre is string && request.resource.data.nombre.size() > 0;
+    }
+  }
+}
